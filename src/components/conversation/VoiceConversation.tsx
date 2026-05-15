@@ -12,12 +12,14 @@ interface VoiceConversationProps {
   language: string;
   mode: string;
   scenarioId?: string;
+  conversationId: string;
 }
 
 export default function VoiceConversation({
   language,
   mode,
   scenarioId,
+  conversationId,
 }: VoiceConversationProps) {
   const {
     state,
@@ -30,7 +32,7 @@ export default function VoiceConversation({
     startConversation,
     stopConversation,
     error,
-  } = useVoiceChat({ language, mode, scenarioId });
+  } = useVoiceChat({ language, mode, scenarioId, conversationId });
 
   const statusText: Record<ConversationState, string> = {
     IDLE: 'Tap the mic to start',

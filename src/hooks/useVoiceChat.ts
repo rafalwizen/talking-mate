@@ -13,7 +13,7 @@ interface UseVoiceChatParams {
   language: string;
   mode: string;
   scenarioId?: string;
-  conversationId?: string;
+  conversationId: string;
 }
 
 interface UseVoiceChatReturn {
@@ -69,6 +69,7 @@ export function useVoiceChat({
   const chat = useChat({
     id: conversationId,
     transport,
+    experimental_throttle: 50,
   });
 
   const {
@@ -109,6 +110,8 @@ export function useVoiceChat({
   );
   // Track whether we've already transitioned to speaking for current response
   const hasTransitionedToSpeakingRef = useRef(false);
+  // Track which messages have been persisted to Supabase
+  const persistedMessageIdsRef = useRef<Set<string>>(new Set());
 
   const isSupported = isRecognitionSupported && isSynthesisSupported;
 
@@ -119,6 +122,29 @@ export function useVoiceChat({
       autoRestartTimerRef.current = null;
     }
   }, []);
+
+  // Persist a message to Supabase
+  const persistMessage = useCallback(
+    async (role: 'user' | 'assistant', content: string, messageId: string) => {
+      if (persistedMessageIdsRef.current.has(messageId)) return;
+      persistedMessageIdsRef.current.add(messageId);
+
+      try {
+        await fetch('/api/conversations/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId,
+            role,
+            content,
+          }),
+        });
+      } catch (err) {
+        console.error('Failed to persist message:', err);
+      }
+    },
+    [conversationId],
+  );
 
   // Start the conversation loop
   const startConversation = useCallback(() => {
@@ -154,6 +180,10 @@ export function useVoiceChat({
     // Stop listening while processing
     stopListening();
     transitionToProcessing();
+
+    // Generate a stable ID for the user message and persist it
+    const userMsgId = `user-${Date.now()}`;
+    persistMessage('user', finalTranscript, userMsgId);
 
     // Send the transcript to the AI
     chat
@@ -245,7 +275,7 @@ export function useVoiceChat({
       }
     }
 
-    // When streaming is done (ready state), speak any remaining text
+    // When streaming is done (ready state), speak any remaining text and persist
     if (status === 'ready') {
       const lastAssistantMsg = [...chat.messages]
         .reverse()
@@ -256,6 +286,11 @@ export function useVoiceChat({
           ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
           ?? [];
         const fullText = textParts.map((p) => p.text).join('');
+
+        // Persist the assistant message
+        if (fullText) {
+          persistMessage('assistant', fullText, lastAssistantMsg.id);
+        }
 
         const remaining = fullText.slice(spokenTextRef.current.length).trim();
         if (remaining) {
