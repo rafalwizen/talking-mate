@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { cn } from '@/lib/utils';
 
 interface ChatBubbleProps {
@@ -5,7 +6,7 @@ interface ChatBubbleProps {
   children: React.ReactNode;
 }
 
-export default function ChatBubble({ role, children }: ChatBubbleProps) {
+export default memo(function ChatBubble({ role, children }: ChatBubbleProps) {
   const isUser = role === 'user';
 
   return (
@@ -22,4 +23,4 @@ export default function ChatBubble({ role, children }: ChatBubbleProps) {
       </div>
     </div>
   );
-}
+});
