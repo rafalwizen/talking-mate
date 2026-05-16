@@ -31,15 +31,24 @@ export default function VoiceConversation({
     isSupported,
     startConversation,
     stopConversation,
+    sendNow,
     error,
   } = useVoiceChat({ language, mode, scenarioId, conversationId });
 
   const statusText: Record<ConversationState, string> = {
     IDLE: 'Tap the mic to start',
-    LISTENING: 'Listening...',
+    LISTENING: 'Listening... tap to send',
     PROCESSING: 'Thinking...',
     SPEAKING: 'Speaking...',
   };
+
+  function handleStop() {
+    if (state === CONVERSATION_STATES.LISTENING) {
+      sendNow();
+    } else {
+      stopConversation();
+    }
+  }
 
   // Map AI SDK messages to a simpler format for ChatHistory
   const displayMessages = messages
@@ -73,7 +82,7 @@ export default function VoiceConversation({
           <MicButton
             state={state as ConversationState}
             onStart={startConversation}
-            onStop={stopConversation}
+            onStop={handleStop}
           />
           <p className="text-xs text-muted">
             {statusText[state as ConversationState] ?? ''}

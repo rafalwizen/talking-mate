@@ -26,12 +26,16 @@ export default function MicButton({ state, onStart, onStop }: MicButtonProps) {
           state === 'PROCESSING' && 'bg-amber-500 text-white animate-pulse',
           state === 'SPEAKING' && 'bg-blue-500 text-white',
         )}
-        aria-label={isActive ? 'Stop' : 'Start'}
+        aria-label={
+          state === 'IDLE' ? 'Start listening'
+            : state === 'LISTENING' ? 'Send now'
+              : 'Stop'
+        }
       >
         {state === 'IDLE' && '🎤'}
-        {state === 'LISTENING' && '⏹'}
+        {state === 'LISTENING' && '➤'}
         {state === 'PROCESSING' && '⏳'}
-        {state === 'SPEAKING' && '🔊'}
+        {state === 'SPEAKING' && '⏹'}
       </button>
     </div>
   );

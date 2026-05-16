@@ -26,6 +26,7 @@ interface UseVoiceChatReturn {
   isSupported: boolean;
   startConversation: () => void;
   stopConversation: () => void;
+  sendNow: () => void;
   error: string | null;
 }
 
@@ -167,6 +168,28 @@ export function useVoiceChat({
     stopTTS();
     transitionToIdle();
   }, [stopListening, stopTTS, transitionToIdle, clearAutoRestartTimer]);
+
+  // Finalize current speech and send to AI immediately
+  const sendNow = useCallback(() => {
+    if (state !== CONVERSATION_STATES.LISTENING) return;
+
+    // Combine finalized transcript with any interim text
+    const text = (transcript + ' ' + interimTranscript).trim();
+    if (!text) return;
+
+    stopListening();
+    transitionToProcessing();
+
+    const userMsgId = `user-${Date.now()}`;
+    persistMessage('user', text, userMsgId);
+
+    chat.sendMessage({ text }).catch((err) => {
+      console.error('Failed to send message:', err);
+      if (isActiveRef.current) {
+        transitionToIdle();
+      }
+    });
+  }, [state, transcript, interimTranscript, stopListening, transitionToProcessing, transitionToIdle, persistMessage, chat]);
 
   // When speech recognition produces a final transcript, send it to the AI
   useEffect(() => {
@@ -357,6 +380,7 @@ export function useVoiceChat({
     isSupported,
     startConversation,
     stopConversation,
+    sendNow,
     error,
   };
 }
