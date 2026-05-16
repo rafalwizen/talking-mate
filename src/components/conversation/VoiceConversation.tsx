@@ -54,14 +54,20 @@ export default function VoiceConversation({
   const displayMessages = messages
     .filter((m) => m.role === 'user' || m.role === 'assistant')
     .map((m) => {
+      // Extract text from parts array (AI SDK v6 format)
       const textParts =
         m.parts?.filter(
           (p): p is { type: 'text'; text: string } => p.type === 'text',
         ) ?? [];
+      let content = textParts.map((p) => p.text).join('');
+      // Fallback: if parts are empty, try content as string
+      if (!content && typeof (m as unknown as Record<string, unknown>).content === 'string') {
+        content = (m as unknown as Record<string, unknown>).content as string;
+      }
       return {
         id: m.id,
         role: m.role as 'user' | 'assistant',
-        content: textParts.map((p) => p.text).join(''),
+        content,
       };
     })
     .filter((m) => m.content.length > 0);
