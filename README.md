@@ -149,4 +149,4 @@ The app displays a browser warning when SpeechRecognition is unavailable.
 
 ## Author
 
-Rafal Wizen — [GitHub](https://github.com/rafalwizen)
+Rafał Wiżeń — [GitHub](https://github.com/rafalwizen)
