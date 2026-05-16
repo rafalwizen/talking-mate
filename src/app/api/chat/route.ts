@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       temperature: 0.7,
       onChunk({ chunk }) {
         if (chunk.type === 'text-delta') {
-          process.stdout.write(chunk.textDelta);
+          process.stdout.write(chunk.text);
         }
       },
       onFinish({ text, usage }) {

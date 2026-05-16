@@ -7,7 +7,6 @@ import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { useSpeechSynthesis } from '@/hooks/useSpeechSynthesis';
 import { useConversationState } from '@/hooks/useConversationState';
 import { CONVERSATION_STATES, TTS_SENTENCE_REGEX } from '@/lib/constants';
-import type { ConversationMode } from '@/lib/constants';
 
 interface UseVoiceChatParams {
   language: string;
@@ -36,35 +35,13 @@ export function useVoiceChat({
   scenarioId,
   conversationId,
 }: UseVoiceChatParams): UseVoiceChatReturn {
-  // Use refs for values that the transport body callback needs
-  // so the transport doesn't recreate on every param change
-  const languageRef = useRef(language);
-  const modeRef = useRef(mode);
-  const scenarioIdRef = useRef(scenarioId);
-
-  // Keep refs in sync with props
-  useEffect(() => {
-    languageRef.current = language;
-  }, [language]);
-  useEffect(() => {
-    modeRef.current = mode;
-  }, [mode]);
-  useEffect(() => {
-    scenarioIdRef.current = scenarioId;
-  }, [scenarioId]);
-
-  // Create transport once — refs ensure body always reads current values
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: '/api/chat',
-        body: () => ({
-          language: languageRef.current,
-          mode: modeRef.current as ConversationMode,
-          scenarioId: scenarioIdRef.current,
-        }),
+        body: { language, mode, scenarioId },
       }),
-    []
+    [language, mode, scenarioId],
   );
 
   const chat = useChat({
@@ -225,6 +202,12 @@ export function useVoiceChat({
   // Watch chat status and stream incoming assistant text for TTS
   useEffect(() => {
     const status = chat.status;
+
+    console.log(`[voiceChat] status=${status} msgs=${chat.messages.length} state=${state}`);
+
+    if (status === 'error') {
+      console.error('[voiceChat] chat error:', chat.error);
+    }
 
     // When streaming starts, transition to speaking
     if (status === 'streaming') {
