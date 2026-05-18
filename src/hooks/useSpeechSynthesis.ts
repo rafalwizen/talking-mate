@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { TTS_SENTENCE_REGEX } from '@/lib/constants';
 
 interface UseSpeechSynthesisReturn {
   speak: (text: string) => void;
   stop: () => void;
   isSpeaking: boolean;
+  isSpeakingRef: React.RefObject<boolean>;
   isSupported: boolean;
   voices: SpeechSynthesisVoice[];
 }
@@ -15,6 +16,8 @@ export function useSpeechSynthesis(lang: string): UseSpeechSynthesisReturn {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
 
+  // Synchronous ref mirroring isSpeaking state (avoids React batching race conditions)
+  const isSpeakingRef = useRef(false);
   // Keep utterance references alive to prevent iOS garbage collection
   const utteranceRefsRef = useRef<SpeechSynthesisUtterance[]>([]);
   // Track whether we should continue speaking the next sentence
@@ -59,6 +62,7 @@ export function useSpeechSynthesis(lang: string): UseSpeechSynthesisReturn {
     const nextSentence = sentenceQueueRef.current.shift();
     if (!nextSentence || !shouldContinueRef.current) {
       // Queue empty or stopped — done speaking
+      isSpeakingRef.current = false;
       setIsSpeaking(false);
       utteranceRefsRef.current = [];
       return;
@@ -113,6 +117,7 @@ export function useSpeechSynthesis(lang: string): UseSpeechSynthesisReturn {
       // Append sentences to the queue
       sentenceQueueRef.current.push(...sentences);
       shouldContinueRef.current = true;
+      isSpeakingRef.current = true;
       setIsSpeaking(true);
 
       if (!wasAlreadySpeaking) {
@@ -133,6 +138,7 @@ export function useSpeechSynthesis(lang: string): UseSpeechSynthesisReturn {
     }
 
     utteranceRefsRef.current = [];
+    isSpeakingRef.current = false;
     setIsSpeaking(false);
   }, [isSupported]);
 
@@ -150,6 +156,7 @@ export function useSpeechSynthesis(lang: string): UseSpeechSynthesisReturn {
     speak,
     stop,
     isSpeaking,
+    isSpeakingRef,
     isSupported,
     voices,
   };
