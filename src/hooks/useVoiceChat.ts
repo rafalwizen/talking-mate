@@ -73,6 +73,7 @@ export function useVoiceChat({
     speak,
     stop: stopTTS,
     isSpeaking,
+    isSpeakingRef,
     isSupported: isSynthesisSupported,
   } = useSpeechSynthesis(language);
 
@@ -265,6 +266,10 @@ export function useVoiceChat({
         ?? [];
       const fullText = textParts.map((p) => p.text).join('');
 
+      if (fullText) {
+        console.log(`[voiceChat] streaming text="${fullText.slice(0, 80)}${fullText.length > 80 ? '...' : ''}" spoken="${spokenTextRef.current.slice(0, 80)}"`);
+      }
+
       // Extract complete sentences from the streamed text so far
       const sentenceMatches = fullText.match(TTS_SENTENCE_REGEX);
       if (sentenceMatches && sentenceMatches.length > 0) {
@@ -293,12 +298,18 @@ export function useVoiceChat({
           ?? [];
         const fullText = textParts.map((p) => p.text).join('');
 
+        // Debug: log full message structure when text is empty
+        if (!fullText) {
+          console.warn('[voiceChat] empty AI response — parts:', JSON.stringify(lastAssistantMsg.parts?.map(p => ({ type: p.type, ...(p.type === 'text' ? { text: (p as { type: 'text'; text: string }).text.slice(0, 100) } : {}) }))));
+        }
+
         // Persist the assistant message
         if (fullText) {
           persistMessage('assistant', fullText, lastAssistantMsg.id);
         }
 
         const remaining = fullText.slice(spokenTextRef.current.length).trim();
+        console.log(`[voiceChat] stream done fullText="${fullText.slice(0, 80)}" remaining="${remaining.slice(0, 80)}" isSpeakingRef=${isSpeakingRef.current}`);
         if (remaining) {
           spokenTextRef.current = fullText;
           speak(remaining);
@@ -311,8 +322,9 @@ export function useVoiceChat({
   }, [chat.status, chat.messages, transitionToSpeaking, speak]);
 
   // When TTS finishes speaking and conversation is active, auto-restart listening
+  // Uses isSpeakingRef (synchronous) to avoid race with speak() calls in the streaming effect
   useEffect(() => {
-    if (!isSpeaking && isActiveRef.current && state === CONVERSATION_STATES.SPEAKING) {
+    if (!isSpeakingRef.current && !isSpeaking && isActiveRef.current && state === CONVERSATION_STATES.SPEAKING) {
       // Check if chat is done streaming
       if (chat.status === 'ready' || chat.status === 'error') {
         transitionToIdle();
@@ -329,7 +341,7 @@ export function useVoiceChat({
         }, 300);
       }
     }
-  }, [isSpeaking, state, chat.status, transitionToIdle, transitionToListening, startListening, clearAutoRestartTimer]);
+  }, [isSpeaking, state, chat.status, transitionToIdle, transitionToListening, startListening, clearAutoRestartTimer, isSpeakingRef]);
 
   // Handle barge-in: when user starts speaking during TTS, stop the audio
   useEffect(() => {

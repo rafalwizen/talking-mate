@@ -32,15 +32,17 @@ export async function POST(request: Request) {
       model: zhipu('glm-4.7-flash'),
       system: systemPrompt,
       messages: trimmedMessages,
-      maxOutputTokens: 200,
+      maxOutputTokens: 1024,
       temperature: 0.7,
       onChunk({ chunk }) {
         if (chunk.type === 'text-delta') {
           process.stdout.write(chunk.text);
+        } else if (chunk.type === 'reasoning-delta') {
+          process.stdout.write(`[reasoning] ${(chunk as { type: 'reasoning-delta'; text: string }).text ?? ''}`);
         }
       },
       onFinish({ text, usage }) {
-        console.log(`\n[chat] done in ${Date.now() - startTime}ms tokens=${usage?.totalTokens ?? '?'}`);
+        console.log(`\n[chat] done in ${Date.now() - startTime}ms text="${text.slice(0, 100)}" usage=${JSON.stringify(usage)}`);
       },
     });
 
